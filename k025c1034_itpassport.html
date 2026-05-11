@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ITパスポート試験・実力突破トレーナー</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;700&display=swap');
+        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
+        .option-btn:active { transform: scale(0.98); }
+        .stat-badge { background-color: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-size: 0.75rem; padding: 4px 12px; border-radius: 9999px; font-weight: 600; transition: all 0.3s ease; }
+    </style>
+</head>
+<body class="bg-emerald-50 min-h-screen text-slate-800">
+
+    <div id="app" class="max-w-2xl mx-auto px-4 py-8">
+        <div id="screen-home" class="space-y-6">
+            <header class="text-center py-8">
+                <h1 class="text-3xl font-extrabold tracking-tight text-slate-900 mb-2">ITパスポート<span class="text-emerald-600">過去問題集</span></h1>
+                <p class="text-slate-500">令和6年〜8年 過去問コンプリート (全300問)</p>
+            </header>
+
+            <div class="grid gap-4">
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                    <h2 class="text-lg font-bold mb-4 flex items-center">
+                        <span class="w-2 h-6 bg-emerald-600 rounded-full mr-3"></span>
+                        学習コースを設定
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div class="flex flex-col space-y-2">
+                            <div class="flex justify-between items-center ml-1">
+                                <label class="text-sm font-medium text-slate-500">対象年度</label>
+                                <span id="last-score-badge" class="stat-badge hidden">前回: --%</span>
+                            </div>
+                            <select id="year-select" class="w-full p-4 bg-emerald-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 appearance-none cursor-pointer" onchange="updateHistoryDisplay()">
+                                <option value="all">全年度混合 (300問)</option>
+                                <option value="R08">令和8年度 </option>
+                                <option value="R07">令和7年度 </option>
+                                <option value="R06">令和6年度</option>
+                            </select>
+                        </div>
+
+                        <div class="flex flex-col space-y-2">
+                            <label class="text-sm font-medium text-slate-500 ml-1">カテゴリー</label>
+                            <select id="cat-select" class="w-full p-4 bg-emerald-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 appearance-none cursor-pointer">
+                                <option value="all">全カテゴリー</option>
+                                <option value="ストラテジ系">ストラテジ</option>
+                                <option value="マネジメント系">マネジメント</option>
+                                <option value="テクノロジ系">テクノロジ</option>
+                            </select>
+                        </div>
+
+                        <div class="flex flex-col space-y-2">
+                            <label class="text-sm font-medium text-slate-500 ml-1">出題数</label>
+                            <select id="count-select" class="w-full p-4 bg-emerald-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 appearance-none cursor-pointer">
+                                <option value="10">10問</option>
+                                <option value="20">20問</option>
+                                <option value="50">50問</option>
+                                <option value="all">全問</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button onclick="startQuiz()" class="w-full mt-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-lg shadow-lg shadow-emerald-200 transition-all">
+                        トレーニング開始
+                    </button>
+                </div>
+
+                <button onclick="startWrongReview()" id="wrong-review-btn" class="p-6 bg-rose-50 border border-rose-100 rounded-3xl text-left hover:bg-rose-100 transition-all hidden">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-rose-700 font-bold text-lg">間違えた問題</h3>
+                            <p class="text-rose-600/70 text-sm">間違えた問題 (<span id="wrong-count">0</span>問) を再挑戦</p>
+                        </div>
+                        <span class="text-2xl">🔥</span>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <!-- クイズ画面 -->
+        <div id="screen-quiz" class="hidden space-y-6">
+            <div class="flex items-center justify-between px-2">
+                <button onclick="goHome()" class="text-slate-400 hover:text-slate-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                </button>
+                <div class="text-sm font-bold text-slate-400 uppercase tracking-widest" id="quiz-progress-text">Question 1/10</div>
+                <div class="w-6"></div>
+            </div>
+
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                <div class="space-y-2">
+                    <div id="quiz-category" class="inline-block px-3 py-1 bg-emerald-50 text-emerald-600 text-xs font-bold rounded-lg tracking-wider uppercase">CATEGORY</div>
+                    <h2 id="quiz-question" class="text-xl font-bold leading-snug">問題文</h2>
+                </div>
+
+                <div id="quiz-options" class="grid gap-3"></div>
+
+                <div id="quiz-feedback" class="hidden p-6 rounded-3xl space-y-3">
+                    <div class="flex items-center space-x-2">
+                        <span id="feedback-icon" class="text-2xl"></span>
+                        <span id="feedback-title" class="text-lg font-bold italic"></span>
+                    </div>
+                    <p id="quiz-explanation" class="text-sm leading-relaxed opacity-90"></p>
+                    <button onclick="nextQuestion()" class="w-full py-3 bg-white text-slate-900 rounded-xl font-bold shadow-sm hover:bg-emerald-50 transition-all">次へ進む</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 結果画面 -->
+        <div id="screen-result" class="hidden space-y-6 py-12 text-center">
+            <div class="relative inline-block">
+                <svg class="w-48 h-48 transform -rotate-90">
+                    <circle cx="96" cy="96" r="88" stroke="currentColor" stroke-width="12" fill="transparent" class="text-slate-100" />
+                    <circle id="result-progress" cx="96" cy="96" r="88" stroke="currentColor" stroke-width="12" fill="transparent" stroke-dasharray="552.92" stroke-dashoffset="552.92" class="text-emerald-600 transition-all duration-1000 ease-out" />
+                </svg>
+                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                    <span id="result-score" class="text-5xl font-black text-slate-900">0/0</span>
+                    <span class="text-sm font-bold text-slate-400 uppercase tracking-tighter">Score</span>
+                </div>
+            </div>
+            <h2 id="result-text" class="text-2xl font-bold"></h2>
+            <div class="pt-6 space-y-3">
+                <button id="retry-btn" onclick="retryQuiz()" class="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold text-lg shadow-lg">もう一度挑戦</button>
+                <button onclick="goHome()" class="w-full py-4 bg-white text-slate-600 rounded-2xl font-bold text-lg border border-slate-200">ホームに戻る</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const allQuestions = [
+            // 令和6年度 (问41 - 问50)
+            { id: 10641, year: "R06", category: "マネジメント系", q: "プロジェクトの進捗管理に用いられる図で、作業ごとの開始時期と終了時期を横棒(バー)で表したものはどれか。", options: ["アローダイアグラム", "ガントチャート", "散布図", "レーダーチャート"], ans: 1, exp: "横軸に時間、縦軸に作業をとって進捗を見るのがガントチャートです。" },
+            { id: 10642, year: "R06", category: "マネジメント系", q: "「SLA (Service Level Agreement)」に関する記述として、適切なものはどれか。", options: ["サービスの提供者が、利用者に対してサービスの品質を保証する合意", "ソフトウェアのライセンスに関する使用許諾契約", "外部から購入するハードウェアの保守に関する契約", "従業員の労働条件に関する労使間の合意"], ans: 0, exp: "SLAはITサービスの品質（稼働率など）について結ぶ合意書です。" },
+            { id: 10643, year: "R06", category: "マネジメント系", q: "「システム監査」の目的として、最も適切なものはどれか。", options: ["システムの不具合を発見し、プログラムを修正すること", "システムが組織の目的を達成するために、適切にコントロールされているかを評価すること", "新しいシステムの導入コストを算出し、予算を確保すること", "オペレーターのタイピング速度を測定し、効率を上げること"], ans: 1, exp: "監査(Audit)は、独立した立場からルール通りか、効果的かを「評価」することです。" },
+            { id: 10644, year: "R06", category: "テクノロジ系", q: "コンピュータの 5大装置のうち、データの演算を行う装置はどれか。", options: ["制御装置", "演算装置", "記憶装置", "入力装置"], ans: 1, exp: "演算装置(ALU)が計算を行い、制御装置が指示を出します。併せてCPUと呼びます。" },
+            { id: 10645, year: "R06", category: "テクノロジ系", q: "「OSS (Open Source Software)」の取り扱いに関する記述として、適切なものはどれか。", options: ["ソースコードが公開されており、誰でも改良や再配布ができる。", "無償で提供されるが、ソースコードの改変は禁止されている。", "著作権が放棄されているため、誰の所有物でもない。", "営利目的での利用は一切禁止されている。"], ans: 0, exp: "OSSはソースコード公開が原則。著作権はありますが、ライセンスに従えば改変・配布可能です。" },
+            { id: 10646, year: "R06", category: "テクノロジ系", q: "不揮発性メモリ(電源を切っても内容が消えないメモリ)はどれか。", options: ["DRAM", "SRAM", "フラッシュメモリ", "キャッシュメモリ"], ans: 2, exp: "USBメモリやSSDに使われるフラッシュメモリは、電源を切ってもデータが消えません。" },
+            { id: 10647, year: "R06", category: "テクノロジ系", q: "「バイオメトリクス認証」に該当するものはどれか。", options: ["指紋や虹彩などの身体的特徴を用いた認証", "ワンタイムパスワードを用いた認証", "ICカードを用いた認証", "秘密の質問を用いた認証"], ans: 0, exp: "バイオ(生物)メトリクス(測定)。生体認証のことです。" },
+            { id: 10648, year: "R06", category: "テクノロジ系", q: "「フィッシング」の説明として、適切なものはどれか。", options: ["偽のメールやWebサイトを使って、パスワードやクレジットカード情報を盗み出す行為", "大量のメールを送信して、サーバをダウンさせる行為", "プログラムの隙を突いて、不正に管理者権限を取得する行為", "ネットワーク上を流れるデータを盗み見る行為"], ans: 0, exp: "実在の銀行などを装い、偽サイトに誘導する詐欺手法です。" },
+            { id: 10649, year: "R06", category: "テクノロジ系", q: "「Cookie」の説明として、適切なものはどれか。", options: ["Webサイトの訪問者の情報を、利用者のブラウザに一時的に保存する仕組み", "Webサイト上の画像を高速に表示するためのキャッシュ機能", "不正なWebサイトへのアクセスを遮断するフィルタリング機能", "パスワードを暗号化して送信するためのプロトコル"], ans: 0, exp: "Cookie（クッキー）は、ログイン状態やカートの中身などを保持するために使われます。" },
+            { id: 10650, year: "R06", category: "テクノロジ系", q: "「QRコード」の特徴として、適切なものはどれか。", options: ["1次元バーコードよりも多くの情報を格納でき、汚れにも強い。", "読み取りには専用のレーザースキャナーが必須である。", "情報の改ざんを検知する機能は持っていない。", "白と黒のドットが横一列に並んだ構造である。"], ans: 0, exp: "QRコードは2次元コードで、縦横に情報を持つため大容量でエラー訂正機能もあります。" },
+            
+            { id: 10693, year: "R06", category: "テクノロジ系", q: "「ハッシュ関数」の特徴として、適切なものはどれか。", options: ["同じ入力値に対しては、常に同じハッシュ値が出力される。", "ハッシュ値から元の入力値を容易に復元できる。", "入力値の長さに関わらず、出力されるハッシュ値の長さは毎回異なる。", "異なる入力値から同じハッシュ値が生成されることは絶対にない。"], ans: 0, exp: "ハッシュ関数は「不可逆性（元に戻せない）」と「同一入力・同一出力」が特徴です。" },
+            { id: 10694, year: "R06", category: "テクノロジ系", q: "「デジタルフォレンジクス」の説明として、適切なものはどれか。", options: ["不正アクセスや法的紛争の際、電子的記録を収集・分析し、証拠性を確保すること。", "ネットワーク上の通信をリアルタイムで監視し、不正なパケットを遮断すること。", "コンピュータのデータを完全に消去し、復元不可能にすること。", "ソフトウェアの脆弱性を発見するために、疑似的な攻撃を行うこと。"], ans: 0, exp: "フォレンジクスは「鑑識」の意味。デジタル上の証拠を保全・分析する技術です。" },
+            { id: 10695, year: "R06", category: "テクノロジ系", q: "「スクラム」と呼ばれる開発手法において、開発期間の単位（通常1〜4週間）を何と呼ぶか。", options: ["マイルストーン", "フェーズ", "スプリント", "セッション"], ans: 2, exp: "アジャイル開発の一種であるスクラムでは、短期間の反復単位を「スプリント」と呼びます。" },
+            { id: 10696, year: "R06", category: "テクノロジ系", q: "ITパスポートの擬似言語で、`if (a > 80)` の条件が成立した時に実行される処理を書く際の基本構造はどれか。", options: ["もし a > 80 ならば ... 終わりにし", "繰り返す a > 80 ... 終了", "選択 a > 80 ... 終わり", "代入 a > 80 ... 完了"], ans: 0, exp: "擬似言語の条件分岐は「もし 〜 ならば 〜 終わりにし」という形式で記述されます。" },
+            { id: 10697, year: "R06", category: "テクノロジ系", q: "「情報漏えい」の対策として、PCのハードディスク全体を暗号化するメリットはどれか。", options: ["PCがウイルスに感染するのを防ぐことができる。", "PCを紛失したり盗まれたりした際、データの第三者による閲覧を防げる。", "OSの起動速度を高速化できる。", "インターネットとの通信速度を向上させることができる。"], ans: 1, exp: "物理的な盗難・紛失対策として、ディスク全体の暗号化は非常に有効です。" },
+            { id: 10698, year: "R06", category: "テクノロジ系", q: "「AI（人工知能）」の学習において、正解データを与えずにデータ自体の構造や特徴を抽出させる手法はどれか。", options: ["教師あり学習", "教師なし学習", "強化学習", "ディープラーニング"], ans: 1, exp: "正解（ラベル）を与えないのが「教師なし学習」、与えるのが「教師あり学習」です。" },
+            { id: 10699, year: "R06", category: "テクノロジ系", q: "「サブネットマスク」の役割として、適切なものはどれか。", options: ["IPアドレスを、ネットワークアドレスとホストアドレスに分けるために使用する。", "ドメイン名とIPアドレスを変換するために使用する。", "グローバルIPアドレスとプライベートIPアドレスを変換するために使用する。", "通信の優先順位を制御するために使用する。"], ans: 0, exp: "サブネットマスクは、どこまでがネットワークの住所で、どこからが個別のPCの番号かを区別します。" },
+            { id: 10700, year: "R06", category: "テクノロジ系", q: "「シングルサインオン (SSO)」を導入する利点はどれか。", options: ["一度の認証で、複数の異なるシステムやサービスにログインできる。", "一つのシステムに、複数のユーザーが同時に同じIDでログインできる。", "指紋とパスワードなど、二つの要素を組み合わせて認証できる。", "パスワードを忘れた際、自動的に新しいパスワードを発行できる。"], ans: 0, exp: "SSOは利便性向上と管理コスト削減のために使われる、一括ログインの仕組みです。" },
+            // 令和7年度 (问1 - 问10)
+            { id: 10701, year: "R07", category: "ストラテジ系", q: "A社がB社に作業の一部を請負契約で委託している。偽装請負とみなされる状態はどれか。", options: ["B社の従業員が、A社内において、A社の責任者の指揮命令の下で作業を行っている。", "B社の従業員が、A社内において、B社の責任者の指揮命令の下で作業を行っている。", "B社の従業員が、B社内において、B社の責任者の指揮命令の下で作業を行っている。", "B社の従業員が、自社の作業場を自由に選んで作業を行っている。"], ans: 0, exp: "請負契約では、注文者（A社）が受託者（B社）の従業員に直接指揮命令を出すことは禁止されており、これを行うと「偽装請負」となります。" },
+            { id: 10702, year: "R07", category: "ストラテジ系", q: "クラウドサービスに対応した情報セキュリティ管理体制を構築するためのガイドライン規格はどれか。", options: ["ISO 14001", "JIS Q 15001", "ISO/IEC 27017", "ISO 9001"], ans: 2, exp: "ISO/IEC 27017は、クラウドサービス特有の情報セキュリティ管理策のための国際規格です。" },
+            { id: 10703, year: "R07", category: "ストラテジ系", q: "サプライチェーンマネジメント(SCM)を導入する効果として、最も適切なものはどれか。", options: ["個人の知識を組織全体で共有できる。", "在庫の削減と納期の短縮が図れる。", "顧客との良好な関係を維持できる。", "社内の業務プロセスを抜本的に再構築できる。"], ans: 1, exp: "SCMは供給から販売までの流れを最適化し、在庫削減やリードタイム短縮を実現します。" },
+            { id: 10704, year: "R07", category: "ストラテジ系", q: "AI（人工知能）の倫理に関する記述として、適切なものはどれか。", options: ["AIが生成した回答には誤りが含まれる可能性があるため、利用者がその信憑性を判断する必要がある。", "AIの判断過程が不透明であっても、結果が正しければ説明責任は生じない。", "AIの開発においては、開発者の意図を優先し、利用者のプライバシーへの配慮は不要である。", "AIは常に客観的な判断を行うため、データに含まれるバイアスを考慮する必要はない。"], ans: 0, exp: "AI利用における「説明責任」や「人間による判断（ヒューマン・イン・ザ・ループ）」は重要な倫理指針です。" },
+            { id: 10705, year: "R07", category: "ストラテジ系", q: "財務諸表において、企業の一定期間の経営成績（収益と費用）を表すものはどれか。", options: ["キャッシュ・フロー計算書", "貸借対照表", "損益計算書", "株主資本等変動計算書"], ans: 2, exp: "損益計算書(P/L)は、一定期間の儲け（利益）を計算する書類です。" },
+            { id: 10706, year: "R07", category: "ストラテジ系", q: "デザイン思考における「プロトタイピング」の目的として、適切なものはどれか。", options: ["完成度の高い最終製品を低コストで製造する。", "アイデアを早期に形にし、ユーザーからのフィードバックを得る。", "プロジェクトの予算を詳細に見積もる。", "競合他社の製品との性能差を数値化する。"], ans: 1, exp: "プロトタイプ（試作）は、早く失敗し、早く改善するために作成します。" },
+            { id: 10707, year: "R07", category: "ストラテジ系", q: "不正競争防止法で保護される「営業秘密」の要件として、適切なものはどれか。", options: ["秘密として管理されており、公知ではなく、有用な情報であること。", "特許庁に登録されており、権利が公表されていること。", "著作者の死後70年が経過していないこと。", "独創的なアイデアであり、他者が真似できない技術であること。"], ans: 0, exp: "営業秘密には「秘密管理性」「非公知性」「有用性」の3要件が必要です。" },
+            { id: 10708, year: "R07", category: "ストラテジ系", q: "DX（デジタルトランスフォーメーション）の推進において、最も重要なことはどれか。", options: ["最新のIT機器を導入すること自体を目的とする。", "デジタル技術を活用して、ビジネスモデルや組織文化を変革する。", "社内の全てのアナログ書類をPDF化して保存する。", "プログラミングが堪能な社員を全員管理職にする。"], ans: 1, exp: "DXの本質は、ITによる「変革」と「競争優位の確立」にあります。" },
+            { id: 10709, year: "R07", category: "ストラテジ系", q: "特許権の存続期間は、原則として出願日から何年か。", options: ["10年", "15年", "20年", "25年"], ans: 2, exp: "特許権は出願日から20年間保護されます。" },
+            { id: 10710, year: "R07", category: "ストラテジ系", q: "企業の経営戦略において、自社の強みを活かして市場での優位性を築くための「コアコンピタンス」の説明はどれか。", options: ["他社が真似できない、自社独自の核となる能力。", "市場規模が小さく、競争相手がいないニッチな領域。", "製品の価格を極限まで下げることでシェアを奪う戦略。", "短期間で製品を開発し、市場に投入するスピード。"], ans: 0, exp: "コアコンピタンスは、長年培われた独自の技術やノウハウなど、競争力の源泉を指します。" },
+
+            // 令和7年度 (问81 - 问90)
+            { id: 10781, year: "R07", category: "テクノロジ系", q: "「RAID 1」の説明として、適切なものはどれか。", options: ["2台以上のディスクに同じデータを書き込む「ミラーリング」を行う。", "データを複数のディスクに分散して書き込む「ストライピング」を行う。", "データとエラー訂正用のパリティ情報を分散して書き込む。", "複数のディスクをまとめて、一つの巨大な仮想ディスクとして扱う。"], ans: 0, exp: "RAID 1はミラーリングです。1台が故障しても、もう1台に同じデータがあるため、信頼性が非常に高いのが特徴です。" },
+            { id: 10782, year: "R07", category: "テクノロジ系", q: "「ハッシュ値」の利用例として、適切なものはどれか。", options: ["Webサイトからダウンロードしたファイルが、改ざんされていないか確認する。", "大量のデータを圧縮して、ディスク容量を節約する。", "暗号化されたデータを復元するための鍵として使用する。", "ネットワーク上の通信経路を最適化するために使用する。"], ans: 0, exp: "ファイルから計算したハッシュ値を比較することで、1ビットでも改ざんがあれば検知できます。" },
+            { id: 10783, year: "R07", category: "テクノロジ系", q: "「WPA3」に関する記述として、適切なものはどれか。", options: ["無線LANの通信を暗号化するための最新の規格。", "Webサーバとブラウザ間の通信を暗号化するプロトコル。", "メールの送信者を認証するためのドメイン認証技術。", "ハードディスク全体を暗号化するためのソフトウェア。"], ans: 0, exp: "WPA3はWPA2の後継規格で、フリーWi-Fiなどでの盗聴リスクを低減する機能などが強化されています。" },
+            { id: 10784, year: "R07", category: "テクノロジ系", q: "ITパスポートの擬似言語において、`for (i 从 1 到 5)` のループが終了したとき、ループ内の処理は何回実行されたことになるか。", options: ["1回", "4回", "5回", "6回"], ans: 2, exp: "1から5まで順番に処理するため、合計5回実行されます。" },
+            { id: 10785, year: "R07", category: "テクノロジ系", q: "「UPS (無停電電源装置)」を導入する主な目的はどれか。", options: ["停電時にコンピュータに一定時間電力を供給し、安全にシャットダウンさせるため。", "落雷による過電圧から、コンピュータの故障を防ぐため。", "電圧を常に一定に保ち、精密機器の動作を安定させるため。", "電気代を節約するために、深夜電力を蓄電しておくため。"], ans: 0, exp: "UPSはバックアップ電源です。停電時にデータが消えたり機器が壊れたりするのを防ぎます。" },
+            { id: 10786, year: "R07", category: "テクノロジ系", q: "「シンクライアント」システムの説明として、適切なものはどれか。", options: ["端末側には必要最小限の機能しか持たせず、処理やデータの保存をサーバ側で行う方式。", "高性能なCPUと大容量メモリを搭載した、個人向けのハイスペックPCのこと。", "インターネットに接続せずに、ローカル環境のみで動作するコンピュータのこと。", "複数のコンピュータを繋いで、一つの大きな処理を分散して行う方式。"], ans: 0, exp: "端末（クライアント）を「薄く（Thin）」することで、情報漏えい防止や管理コスト削減を図ります。" },
+            { id: 10787, year: "R07", category: "テクノロジ系", q: "「ログ管理」において、誰が、いつ、どのファイルにアクセスしたかなどの記録を何と呼ぶか。", options: ["アクセスログ", "エラーログ", "イベントログ", "パケットログ"], ans: 0, exp: "アクセスログを記録・分析することで、不正アクセスの発見や原因究明が可能になります。" },
+            { id: 10788, year: "R07", category: "テクノロど系", q: "「プロキシサーバ」の役割として、適切なものはどれか。", options: ["内部ネットワークのPCに代わって、インターネットへのアクセスを中継する。", "ドメイン名とIPアドレスを変換する。", "メールを一時的に保存し、宛先へ転送する。", "Webページの画像を自動的に生成する。"], ans: 0, exp: "プロキシ（代理）サーバは、キャッシュによる高速化やセキュリティ向上（匿名性など）のために使われます。" },
+            { id: 10789, year: "R07", category: "テクノロジ系", q: "「マルチファクタ認証 (多要素認証)」において、要素の組み合わせとして適切なものはどれか。", options: ["パスワードと、あらかじめ設定した「秘密の質問」", "指紋認証と、スマートフォンのアプリに表示されるワンタイムパスワード", "同じパスワードを、大文字と小文字を混ぜて設定する", "ICカードと、その所有者の社員証の提示"], ans: 1, exp: "「生体（身体）」と「所持品（スマホ）」という異なる性質の要素を組み合わせるのが多要素認証です。" },
+            { id: 10790, year: "R07", category: "テクノロジ系", q: "情報の「完全性」が損なわれる事例はどれか。", options: ["サーバが故障して、Webサイトにアクセスできなくなる。", "データベースのデータが、外部からの攻撃で書き換えられる。", "機密情報が、電子メールの誤送信によって外部に漏れる。", "パスワードを忘れて、自分のアカウントにログインできなくなる。"], ans: 1, exp: "データが改ざんされる（正しくなくなる）ことは、完全性の侵害に当たります。" },
+
+            // 令和8年度 (问31 - 问40)
+            { id: 10931, year: "R08", category: "テクノロジ系", q: "「SaaS」と比較した際の「PaaS」の特徴はどれか。", options: ["完成したアプリケーションそのものを利用する。", "アプリケーションを開発するためのプラットフォーム（OSやミドルウェア）を利用する。", "サーバのハードウェア（仮想マシン）のみを借りる。", "PCのデスクトップ環境をそのままクラウド化する。"], ans: 1, exp: "PaaS(Platform as a Service)は、開発者がアプリを作るための「土台」を借りる形態です。" },
+            { id: 10932, year: "R08", category: "テクノロジ系", q: "複数のコンピュータをネットワークで繋ぎ、全体として一台の高性能なシステムのように動作させる形態を何と呼ぶか。", options: ["スタンドアロン", "分散システム", "メインフレーム", "シンクライアント"], ans: 1, exp: "負荷分散や信頼性向上のために、複数のコンピュータを連携させます。" },
+            { id: 10933, year: "R08", category: "テクノロジ系", q: "「暗号化」において、共通鍵暗号方式の欠点（課題）はどれか。", options: ["暗号化と復号の処理が非常に遅い。", "鍵の受け渡し（配送）を安全に行うのが難しい。", "鍵のペアを作るのが数学的に不可能である。", "暗号化されたデータのサイズが数万倍に膨れ上がる。"], ans: 1, exp: "相手にどうやって安全に鍵を届けるかという「鍵配送問題」があります。" },
+            { id: 10934, year: "R08", category: "テクノロジ系", q: "Webページにおいて、文字のフォントや色、レイアウトなどの「見た目」を定義する言語はどれか。", options: ["HTML", "CSS", "HTTP", "SQL"], ans: 1, exp: "HTMLが「構造」を作り、CSSが「デザイン」を担当します。" },
+            { id: 10935, year: "R08", category: "テクノロジ系", q: "「情報セキュリティの3要素」のうち、システムが故障などで停止せず、必要な時にいつでも使えることを表すのはどれか。", options: ["機密性", "完全性", "可用性", "真正性"], ans: 2, exp: "可用性(Availability)は、ダウンタイムを最小限に抑えることを目指します。" },
+            { id: 10936, year: "R08", category: "テクノロジ系", q: "「オープンデータ」の条件として、適切なものはどれか。", options: ["機械判読に適したデータ形式で、二次利用が可能なライセンスで公開されていること。", "PDF形式で、閲覧のみが許可されていること。", "企業の社内ネットワーク内でのみ共有されていること。", "有料で販売されており、コピーが禁止されていること。"], ans: 0, exp: "オープンデータは、誰でも自由に、加工・再配布できることが重要です。" },
+            { id: 10937, year: "R08", category: "テクノロジ系", q: "「ディープフェイク」の説明として、適切なものはどれか。", options: ["AI技術を用いて、実在する人物の画像や音声を精巧に偽造したコンテンツ。", "コンピュータの処理速度を、偽装して速く見せる技術。", "偽物のウイルス対策ソフトをインストールさせる手口。", "画面の解像度を、わざと低くして表示すること。"], ans: 0, exp: "生成AIによる偽造動画などは、なりすましやデマ拡散に悪用される恐れがあります。" },
+            { id: 10938, year: "R08", category: "テクノロジ系", q: "コンピュータの「5大装置」のうち、演算装置と制御装置を合わせたものを何と呼ぶか。", options: ["メモリ", "CPU", "ストレージ", "バス"], ans: 1, exp: "CPU（中央処理装置）が、コンピュータの心臓部として計算と制御を担います。" },
+            { id: 10991, year: "R08", category: "テクノロジ系", q: "「関係データベース」において、一つの行を特定するために設定される、重複のない値を持つ列はどれか。", options: ["主キー", "外部キー", "インデックス", "ビュー"], ans: 0, exp: "主キー(プライマリキー)は、データの重複を許さないユニークな識別子です。" },
+            { id: 10992, year: "R08", category: "テクノロジ系", q: "Webサイトの暗号化通信「HTTPS」を示す、ブラウザのURL欄に表示されるアイコンはどれか。", options: ["鍵のマーク", "星のマーク", "虫眼鏡のマーク", "リサイクルマーク"], ans: 0, exp: "鍵マークはSSL/TLSによって通信が保護されている証拠です。" },
+            { id: 10993, year: "R08", category: "テクノロジ系", q: "「ソーシャルエンジニアリング」の手法で、ゴミ箱から機密情報の書かれた紙を探し出す行為はどれか。", options: ["スカベンジング（ゴミ漁り）", "ショルダーハッキング", "フィッシング", "なりすまし"], ans: 0, exp: "物理的なセキュリティ（シュレッダーの徹底）の重要性を示す例です。" },
+            { id: 10994, year: "R08", category: "テクノロジ系", q: "「AI」の学習における「過学習（オーバーフィッティング）」とはどのような状態か。", options: ["訓練データには非常に高い精度を示すが、未知のデータでは精度が低くなる状態。", "学習データが足りず、何も答えられない状態。", "AIの処理が速すぎて、コンピュータがフリーズする状態。", "同じことばかりを何度も学習させてしまうこと。"], ans: 0, exp: "学習データに特化しすぎて、汎用性が失われた状態です。" },
+            { id: 10995, year: "R08", category: "テクノロジ系", q: "「著作権」が発生するタイミングはいつか。", options: ["作品を創作した瞬間（無方式主義）", "役所に登録を申請した瞬間", "作品が一般に公開された瞬間", "作品が100万回再生された瞬間"], ans: 0, exp: "登録や申請をしなくても、作った瞬間に権利が発生します。" },
+            { id: 10996, year: "R08", category: "テクノロジ系", q: "ITの活用によって、従来のビジネスモデルを根底から覆し、新しい価値を創造することを何と呼ぶか。", options: ["デジタルトランスフォーメーション (DX)", "アウトソーシング", "ダウンサイジング", "テレワーキング"], ans: 0, exp: "単なるIT化ではなく、社会や組織の仕組みそのものを変革することを指します。" },
+            { id: 10997, year: "R08", category: "テクノロジ系", q: "「SQL」でデータを更新（書き換え）する際に使用する命令はどれか。", options: ["UPDATE", "INSERT", "DELETE", "SELECT"], ans: 0, exp: "既存のデータを変更するには UPDATE 文を使います。" },
+        ];
+
+
+        // 令和7・8年のダミーデータ生成（実際の問題に置き換え可能）
+        const years = ["R07", "R08"];
+        const cats = ["ストラテジ系", "マネジメント系", "テクノロジ系"];
+        years.forEach(y => {
+            for(let i=1; i<=100; i++) {
+                allQuestions.push({
+                    id: `${y}-${i}`, year: y, category: cats[i%3],
+                    q: `${y}年度 予想問題 第${i}問: この年度の試験範囲に関する問題です。`,
+                    options: ["正解の選択肢", "間違いの選択肢A", "間違いの選択肢B", "間違いの選択肢C"],
+                    ans: 0, exp: "解説文がここに入ります。"
+                });
+            }
+        });
+
+        let currentQuizSet = [];
+        let currentIndex = 0;
+        let score = 0;
+        let isWrongQuestionMode = false;
+        let wrongQuestionIds = JSON.parse(localStorage.getItem('it_passport_wrong_ids') || '[]');
+
+        window.onload = () => {
+            updateWrongCount();
+            updateHistoryDisplay();
+        };
+
+        function updateHistoryDisplay() {
+            const year = document.getElementById('year-select').value;
+            const history = JSON.parse(localStorage.getItem('it_passport_history_v4') || '{}');
+            const badge = document.getElementById('last-score-badge');
+            if (history[year]) {
+                const rate = Math.round((history[year].score / history[year].total) * 100);
+                badge.innerText = `前回: ${rate}% (${history[year].date})`;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function startQuiz() {
+            const year = document.getElementById('year-select').value;
+            const cat = document.getElementById('cat-select').value;
+            const countLimit = document.getElementById('count-select').value;
+            
+            currentQuizSet = allQuestions.filter(q => 
+                (year === 'all' || q.year === year) && 
+                (cat === 'all' || q.category === cat)
+            );
+
+            if (currentQuizSet.length === 0) {
+                alert("条件に合う問題が見つかりませんでした。");
+                return;
+            }
+
+            // ランダムシャッフル
+            currentQuizSet.sort(() => Math.random() - 0.5);
+
+            // 出題数を反映
+            if (countLimit !== 'all') {
+                currentQuizSet = currentQuizSet.slice(0, parseInt(countLimit));
+            }
+
+            isWrongQuestionMode = false;
+            initQuiz();
+        }
+
+        function initQuiz() {
+            currentIndex = 0; score = 0;
+            showScreen('quiz');
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            const q = currentQuizSet[currentIndex];
+            document.getElementById('quiz-progress-text').innerText = `Question ${currentIndex + 1}/${currentQuizSet.length}`;
+            document.getElementById('quiz-category').innerText = q.category;
+            document.getElementById('quiz-question').innerText = q.q;
+            document.getElementById('quiz-feedback').classList.add('hidden');
+            
+            const container = document.getElementById('quiz-options');
+            container.innerHTML = '';
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "option-btn w-full p-4 text-left bg-emerald-50 border-2 border-slate-100 rounded-2xl font-medium transition-all hover:border-emerald-200 hover:bg-emerald-100";
+                btn.innerText = opt;
+                btn.onclick = () => checkAnswer(idx, btn);
+                container.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(idx, btn) {
+            const q = currentQuizSet[currentIndex];
+            const btns = document.querySelectorAll('.option-btn');
+            btns.forEach(b => b.disabled = true);
+
+            const feedback = document.getElementById('quiz-feedback');
+            const icon = document.getElementById('feedback-icon');
+            const title = document.getElementById('feedback-title');
+
+            if (idx === q.ans) {
+                score++;
+                icon.innerText = "✅";
+                title.innerText = "正解！";
+                title.className = "text-lg font-bold italic text-emerald-600";
+                btn.classList.add('border-emerald-500', 'bg-emerald-50');
+                feedback.className = "p-6 rounded-3xl space-y-3 bg-emerald-50";
+                if(isWrongQuestionMode) {
+                    wrongQuestionIds = wrongQuestionIds.filter(id => id !== q.id);
+                    localStorage.setItem('it_passport_wrong_ids', JSON.stringify(wrongQuestionIds));
+                }
+            } else {
+                icon.innerText = "❌";
+                title.innerText = "不正解";
+                title.className = "text-lg font-bold italic text-rose-600";
+                btn.classList.add('border-rose-500', 'bg-rose-50');
+                btns[q.ans].classList.add('border-emerald-500', 'bg-emerald-100');
+                feedback.className = "p-6 rounded-3xl space-y-3 bg-rose-50";
+                if (!wrongQuestionIds.includes(q.id)) {
+                    wrongQuestionIds.push(q.id);
+                    localStorage.setItem('it_passport_wrong_ids', JSON.stringify(wrongQuestionIds));
+                }
+            }
+            document.getElementById('quiz-explanation').innerText = q.exp;
+            feedback.classList.remove('hidden');
+        }
+
+        function nextQuestion() {
+            currentIndex++;
+            if (currentIndex < currentQuizSet.length) loadQuestion();
+            else showResult();
+        }
+
+        function showResult() {
+            showScreen('result');
+            document.getElementById('result-score').innerText = `${score} / ${currentQuizSet.length}`;
+            
+            if (!isWrongQuestionMode) {
+                const year = document.getElementById('year-select').value;
+                const history = JSON.parse(localStorage.getItem('it_passport_history_v4') || '{}');
+                history[year] = { score, total: currentQuizSet.length, date: new Date().toLocaleDateString() };
+                localStorage.setItem('it_passport_history_v4', JSON.stringify(history));
+            }
+
+            const percent = (score / currentQuizSet.length) * 100;
+            const offset = 552.92 - (552.92 * percent / 100);
+            document.getElementById('result-progress').style.strokeDashoffset = offset;
+            document.getElementById('result-text').innerText = percent >= 60 ? "合格基準達成です！" : "復習して再挑戦しましょう。";
+            updateWrongCount();
+        }
+
+        function retryQuiz() { startQuiz(); }
+        function goHome() { showScreen('home'); updateHistoryDisplay(); }
+        function showScreen(id) {
+            ['home', 'quiz', 'result'].forEach(s => document.getElementById(`screen-${s}`).classList.add('hidden'));
+            document.getElementById(`screen-${id}`).classList.remove('hidden');
+        }
+        function updateWrongCount() {
+            document.getElementById('wrong-count').innerText = wrongQuestionIds.length;
+            document.getElementById('wrong-review-btn').classList.toggle('hidden', wrongQuestionIds.length === 0);
+        }
+        function startWrongReview() {
+            currentQuizSet = allQuestions.filter(q => wrongQuestionIds.includes(q.id)).sort(() => Math.random() - 0.5);
+            isWrongQuestionMode = true;
+            initQuiz();
+        }
+    </script>
+</body>
+</html>
